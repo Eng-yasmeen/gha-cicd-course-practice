@@ -15,9 +15,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  run-on-merge:
-    if: github.event.pull_request.merged ==true
   say-hello:
+    if: github.event.pull_request.merged ==true
     # GitHub provides a fresh runner for the job.
     runs-on: ubuntu-latest
 
