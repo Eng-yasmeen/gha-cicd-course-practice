@@ -1,62 +1,49 @@
 name: CI Workflow with Python Matrix
 
 on:
-  workflow_dispatch:  # تشغيل يدوي من GitHub
+  workflow_dispatch:
   schedule:
-    - cron: "25 10 * * *"  # تشغيل يوميًا الساعة 10:25 UTC
+    - cron: "25 10 * * *"
 
 jobs:
   run-tests:
-    runs-on: ubuntu-latest  # نوع الـ runner
+    runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        python-version: [3.11, 3.12]  # نسخ Python المختلفة
+        python-version: [3.11, 3.12]
         include:
           - python-version: 3.11
             DOCKER_TAG: docker-py311
           - python-version: 3.12
             DOCKER_TAG: docker-py312
 
-    # تعريف متغيرات البيئة لكل نسخة
     env:
-      PY_VER: ${{ matrix.python-version }}   # نسخة Python الحالية
-      IMAGE_TAG: ${{ matrix.DOCKER_TAG }}    # اسم الـ Docker image/tag
+      PY_VER: ${{ matrix.python-version }}
+      IMAGE_TAG: ${{ matrix.DOCKER_TAG }}
 
     steps:
-      #Checkout repository
-      - name: Checkout repository
+      - name: Check out repository
         uses: actions/checkout@v6
-        # ينزل محتوى الريبو على الـ runner
 
-      #Setup Python
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PY_VER }}
-        # يحضر نسخة Python المحددة لكل job
 
-      #Show Python version
       - name: Show Python version
         run: python --version
-        # يطبع نسخة Python على الـ logs
 
-      # List repo files
       - name: List repo files
         run: ls -la
-        # يعرض كل ملفات الريبو الموجودة على الـ runner
 
-      # Show trigger time
       - name: Show trigger time
         run: date
-        # يعرض وقت تشغيل الـ workflow
 
-      # Run Python tests
+      # ✅ هنا run عادي بدل dorny/test
       - name: Run tests
         run: python -m unittest discover -s tests -v
-        # يشغّل جميع اختبارات الوحدة في مجلد tests
 
-      # Build Docker image (Action جاهز)
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
@@ -64,21 +51,16 @@ jobs:
           file: ./Dockerfile
           push: false
           tags: myapp:${{ env.IMAGE_TAG }}
-        # يبني Docker image ويعمل له tag خاص بكل نسخة Python
 
-      # Save Docker image as tar (Action جاهز)
       - name: Save Docker image as tar
         uses: docker/save-buildx-action@v2
         with:
           name: myapp-${{ env.IMAGE_TAG }}.tar
           image: myapp:${{ env.IMAGE_TAG }}
-        # يحفظ الـ Docker image كملف .tar
 
-      # Upload Docker artifact (Action جاهز)
       - name: Upload Docker artifact
         uses: actions/upload-artifact@v4
         with:
           name: myapp-${{ env.IMAGE_TAG }}
           path: myapp-${{ env.IMAGE_TAG }}.tar
           retention-days: 7
-        # يرفع ملف الـ .tar كـ artifact على GitHub Actions
