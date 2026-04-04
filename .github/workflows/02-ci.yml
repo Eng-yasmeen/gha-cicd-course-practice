@@ -1,9 +1,7 @@
-name: CI Workflow with Python Matrix
+name: CI Workflow with Secrets Matrix
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "25 10 * * *"
 
 jobs:
   run-tests:
@@ -15,15 +13,18 @@ jobs:
         include:
           - python-version: 3.11
             DOCKER_TAG: docker-py311
+            SECRET_VAR: ${{ secrets.SECRET_PY311 }}
           - python-version: 3.12
             DOCKER_TAG: docker-py312
+            SECRET_VAR: ${{ secrets.SECRET_PY312 }}
 
     env:
       PY_VER: ${{ matrix.python-version }}
       IMAGE_TAG: ${{ matrix.DOCKER_TAG }}
+      MY_SECRET: ${{ matrix.SECRET_VAR }}
 
     steps:
-      - name: Check out repository
+      - name: Checkout repository
         uses: actions/checkout@v6
 
       - name: Set up Python
@@ -34,13 +35,9 @@ jobs:
       - name: Show Python version
         run: python --version
 
-      - name: List repo files
-        run: ls -la
+      - name: Show secret (for demo, don't print real secrets!)
+        run: echo "Secret for this job is $MY_SECRET"
 
-      - name: Show trigger time
-        run: date
-
-      # ✅ هنا run عادي بدل dorny/test
       - name: Run tests
         run: python -m unittest discover -s tests -v
 
