@@ -5,13 +5,17 @@ on:
 
 jobs:
 
-  # 🔥 1. MATRIX CI
   Job1:
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
         python-version: [3.11, 3.12]
+        include:
+          - python-version: 3.11
+            DOCKER_TAG: docker-py311
+          - python-version: 3.12
+            DOCKER_TAG: docker-py312
 
     steps:
       - name: Checkout
@@ -22,17 +26,14 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      # ✅ نحط secret حسب version هنا
-      - name: Set secret for Python 3.11
-        if: matrix.python-version == '3.11'
-        run: echo "MY_SECRET=${{ secrets.SECRET_PY311 }}" >> $GITHUB_ENV
-
-      - name: Set secret for Python 3.12
-        if: matrix.python-version == '3.12'
-        run: echo "MY_SECRET=${{ secrets.SECRET_PY312 }}" >> $GITHUB_ENV
-
-      - name: Use Secret
-        run: echo "Secret length is ${#MY_SECRET}"
+      # ✅ هنا بس نستخدم secrets (مش في matrix!)
+      - name: Set secret based on version
+        run: |
+          if [ "${{ matrix.python-version }}" = "3.11" ]; then
+            echo "MY_SECRET=${{ secrets.SECRET_PY311 }}" >> $GITHUB_ENV
+          else
+            echo "MY_SECRET=${{ secrets.SECRET_PY312 }}" >> $GITHUB_ENV
+          fi
 
       - name: Run tests
         run: python -m unittest discover -s tests -v
