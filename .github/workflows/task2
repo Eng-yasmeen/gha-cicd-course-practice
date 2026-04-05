@@ -1,56 +1,33 @@
-name: Deploy Workflow
+name: CI + Docker Build Arg Example
 
-# 🔔 Trigger: بعد ما build workflow ينجح
 on:
-  workflow_run:
-    workflows: ["03 Build Artifact Workflow"]  # اسم workflow البناء
-    types:
-      - completed
+  workflow_dispatch:
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+        env-type: ["dev", "prod"]
 
     steps:
-      # 1️⃣ Checkout repo (optional, needed if any scripts)
-      - name: Check out repository
+      - name: Checkout repo
         uses: actions/checkout@v6
 
-      # 2️⃣ Download the artifact built in previous workflow
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: tiny-health-app-image  # نفس الاسم اللي رفعتيه
-          path: ./artifact
-
-      # 3️⃣ Load Docker image from artifact
-      - name: Load Docker image
+      - name: Set Docker build args
         run: |
-          docker load -i ./artifact/tiny-health-app.tar
+          if [ "${{ matrix.python-version }}" = "3.11" ]; then
+            echo "BASE_IMAGE=python:3.11-slim" >> $GITHUB_ENV
+          else
+            echo "BASE_IMAGE=python:3.12-slim" >> $GITHUB_ENV
+          fi
+          echo "APP_ENV=${{ matrix.env-type }}" >> $GITHUB_ENV
 
-      # 4️⃣ Start container from loaded image
-      - name: Start container
+      - name: Build Docker image with ARGs
         run: |
-          docker run -d -p 8000:8000 --name tiny-health-app tiny-health-app:latest
-
-      # 5️⃣ Smoke test: تأكدي إن التطبيق شغال
-      - name: Smoke test deployed app
-        run: |
-          for i in {1..5}; do
-            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/health)
-            if [ "$RESPONSE" = "200" ]; then
-              echo "Smoke test passed ✅"
-              exit 0
-            fi
-            echo "Retrying..."
-            sleep 2
-          done
-          echo "Smoke test failed ❌"
-          exit 1
-
-      # 6️⃣ Stop & remove container after test (optional cleanup)
-      - name: Cleanup container
-        run: |
-          docker stop tiny-health-app
-          docker rm tiny-health-app
+          docker build \
+            --build-arg BASE_IMAGE=$BASE_IMAGE \
+            --build-arg APP_ENV=$APP_ENV \
+            -t myapp:${{ matrix.python-version }}-${{ matrix.env-type }} .
