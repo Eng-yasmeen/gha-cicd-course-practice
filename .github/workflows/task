@@ -11,7 +11,7 @@ on:
 
 jobs:
 
-  # 1. MATRIX CI
+  #  1. MATRIX CI
   Job1:
     runs-on: ubuntu-latest
 
@@ -24,13 +24,6 @@ jobs:
           - python-version: 3.12
             DOCKER_TAG: docker-py312
 
-    env:
-      PY_VER: ${{ matrix.python-version }}
-      IMAGE_TAG: ${{ matrix.DOCKER_TAG }}
-
-      # ✅ حل مشكلة secrets
-      MY_SECRET: ${{ matrix.python-version == '3.11' && secrets.SECRET_PY311 || secrets.SECRET_PY312 }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,18 +31,26 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PY_VER }}
+          python-version: ${{ matrix.python-version }}
 
       - name: Show Python version
         run: python --version
 
-      - name: Use Secret (Test)
-        run: echo "Secret length is ${#MY_SECRET}"
+      - name: Set secret based on version
+        run: |
+          if [ "${{ matrix.python-version }}" = "3.11" ]; then
+            echo "MY_SECRET=${{ secrets.SECRET_PY311 }}" >> $GITHUB_ENV
+          else
+            echo "MY_SECRET=${{ secrets.SECRET_PY312 }}" >> $GITHUB_ENV
+          fi
+
+      - name: Use Secret
+        run: echo "Secret is set (hidden)"
 
       - name: Run tests
         run: python -m unittest discover -s tests -v
 
-  # 2. BUILD ARTIFACT (dependent)
+  #  2. BUILD ARTIFACT
   Job2:
     needs: Job1
     if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
