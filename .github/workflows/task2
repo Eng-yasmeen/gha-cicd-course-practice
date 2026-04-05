@@ -1,0 +1,33 @@
+name: CI + Docker Build Arg Example
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+        env-type: ["dev", "prod"]
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Set Docker build args
+        run: |
+          if [ "${{ matrix.python-version }}" = "3.11" ]; then
+            echo "BASE_IMAGE=python:3.11-slim" >> $GITHUB_ENV
+          else
+            echo "BASE_IMAGE=python:3.12-slim" >> $GITHUB_ENV
+          fi
+          echo "APP_ENV=${{ matrix.env-type }}" >> $GITHUB_ENV
+
+      - name: Build Docker image with ARGs
+        run: |
+          docker build \
+            --build-arg BASE_IMAGE=$BASE_IMAGE \
+            --build-arg APP_ENV=$APP_ENV \
+            -t myapp:${{ matrix.python-version }}-${{ matrix.env-type }} .
