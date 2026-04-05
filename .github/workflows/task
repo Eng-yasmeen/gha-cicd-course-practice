@@ -1,0 +1,66 @@
+name: Full CI + Artifact Pipeline
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+
+  # 🔥 1. MATRIX CI
+  Job1:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: [3.11, 3.12]
+        include:
+          - python-version: 3.11
+            DOCKER_TAG: docker-py311
+          - python-version: 3.12
+            DOCKER_TAG: docker-py312
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+  # 🔥 2. BUILD ARTIFACT (dependent)
+  Job2:
+    needs: Job1   # 💥 أهم سطر
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    env:
+      IMAGE_NAME: tiny-health-app
+      ARTIFACT_NAME: tiny-health-app-image
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build + Save Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: ${{ env.IMAGE_NAME }}:latest
+          outputs: type=tar,name=${{ env.ARTIFACT_NAME }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.ARTIFACT_NAME }}.tar
