@@ -1,22 +1,22 @@
 # Dockerfile
-# 1️⃣ تعديل الـ FROM dynamically باستخدام ARG
+# 1 تعديل الـ FROM dynamically باستخدام ARG
 ARG BASE_IMAGE=python:3.12-slim
 FROM ${BASE_IMAGE}
 
-# 2️⃣ ARG داخل الصورة عشان نستقبل قيمة من workflow
+# 2 ARG داخل الصورة عشان نستقبل قيمة من workflow
 ARG APP_ENV=dev
 
-# 3️⃣ إعداد متغير environment داخل الصورة
+# 3 إعداد متغير environment داخل الصورة
 ENV APP_ENV=${APP_ENV}
 
-# 4️⃣ إنشاء مجلد التطبيق
+# 4 إنشاء مجلد التطبيق
 WORKDIR /app
 
-# 5️⃣ نسخ الكود
+# 5 نسخ الكود
 COPY . /app
 
-# 6️⃣ تثبيت dependencies لو موجود requirements.txt
+# 6 تثبيت dependencies لو موجود requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt || echo "No requirements.txt found"
 
-# 7️⃣ أمر التشغيل الافتراضي
+# 7 أمر التشغيل الافتراضي
 CMD ["python", "app.py"]
