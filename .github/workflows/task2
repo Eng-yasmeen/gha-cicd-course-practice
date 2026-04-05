@@ -1,0 +1,56 @@
+name: Deploy Workflow
+
+# 🔔 Trigger: بعد ما build workflow ينجح
+on:
+  workflow_run:
+    workflows: ["03 Build Artifact Workflow"]  # اسم workflow البناء
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      # 1️⃣ Checkout repo (optional, needed if any scripts)
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      # 2️⃣ Download the artifact built in previous workflow
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tiny-health-app-image  # نفس الاسم اللي رفعتيه
+          path: ./artifact
+
+      # 3️⃣ Load Docker image from artifact
+      - name: Load Docker image
+        run: |
+          docker load -i ./artifact/tiny-health-app.tar
+
+      # 4️⃣ Start container from loaded image
+      - name: Start container
+        run: |
+          docker run -d -p 8000:8000 --name tiny-health-app tiny-health-app:latest
+
+      # 5️⃣ Smoke test: تأكدي إن التطبيق شغال
+      - name: Smoke test deployed app
+        run: |
+          for i in {1..5}; do
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/health)
+            if [ "$RESPONSE" = "200" ]; then
+              echo "Smoke test passed ✅"
+              exit 0
+            fi
+            echo "Retrying..."
+            sleep 2
+          done
+          echo "Smoke test failed ❌"
+          exit 1
+
+      # 6️⃣ Stop & remove container after test (optional cleanup)
+      - name: Cleanup container
+        run: |
+          docker stop tiny-health-app
+          docker rm tiny-health-app
