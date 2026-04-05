@@ -11,18 +11,13 @@ on:
 
 jobs:
 
-  #1. MATRIX CI
+  # 🔥 1. MATRIX CI
   Job1:
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
         python-version: [3.11, 3.12]
-        include:
-          - python-version: 3.11
-            DOCKER_TAG: docker-py311
-          - python-version: 3.12
-            DOCKER_TAG: docker-py312
 
     steps:
       - name: Checkout
@@ -36,15 +31,15 @@ jobs:
       - name: Run tests
         run: python -m unittest discover -s tests -v
 
-  # 2. BUILD ARTIFACT (dependent)
+  # 🔥 2. BUILD ARTIFACT
   Job2:
-    needs: Job1   # 💥 أهم سطر
+    needs: Job1
     if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     env:
       IMAGE_NAME: tiny-health-app
-      ARTIFACT_NAME: tiny-health-app-image
+      ARTIFACT_NAME: tiny-health-app-${{ github.run_id }}
 
     steps:
       - name: Checkout repository
@@ -57,7 +52,7 @@ jobs:
           file: ./Dockerfile
           push: false
           tags: ${{ env.IMAGE_NAME }}:latest
-          outputs: type=tar,name=${{ env.ARTIFACT_NAME }}
+          outputs: type=docker,dest=${{ env.ARTIFACT_NAME }}.tar
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
